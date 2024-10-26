@@ -1,33 +1,41 @@
 import java.util.*;
 
-public class Solution {
+class Solution {
     public int[] treeQueries(TreeNode root, int[] queries) {
-        Map<Integer, Integer> map = new HashMap<>();
-        dfs(root, map);
-        Map<Integer, Integer> ans = new HashMap<>();
-        // System.out.println(map);
-        Queue<TreeNode> q = new LinkedList<>();
-        q.offer(root);
-        int maxH = map.get(root.val);
-        int level = 0;
-        while(!q.isEmpty()){
-            int size = q.size();
-            List<Integer> vals = new ArrayList<>();
-            int levelMax = 0;
-            int nextMax = 0;
-            int levelMaxVal = 0;
-            for(int i = 0; i < size; i++){
-                TreeNode cur = q.poll();
-                vals.add(cur.val);
-                int height = map.get(cur.val);
-                if(levelMax <= height ){
-                    nextMax = levelMax;
-                    levelMax = height;
-                    levelMaxVal = cur.val;
-                }else if(height > nextMax){
-                    nextMax = height;
-                }
+        Map<Integer, Integer> maxDepth = new HashMap<>();
+        dfs(root, 0, maxDepth);
+        int[] res = new int[queries.length];
+        Map<Integer, Set<Integer>> valIndex = new HashMap<>();
+        for(int i = 0; i < queries.length; i++){
+            if(!valIndex.containsKey(queries[i])){
+                valIndex.put(queries[i], new HashSet<>());
+            }
+            valIndex.get(queries[i]).add(i);
+        }
 
+        Deque<TreeNode> q = new ArrayDeque<>();
+        System.out.println(maxDepth);
+        System.out.println(valIndex);
+        q.add(root);
+        int level = 0;
+        while(!q.isEmpty()) {
+            int size = q.size();
+            int maxDepthOnThisLevel = -1;
+            int maxI = -1;
+            int secondBest = -1;
+            List<Integer> nodes = new ArrayList<>();
+            for(int i = 0; i < size; i++) {
+                TreeNode cur = q.poll();
+                int val = cur.val;
+                nodes.add(val);
+                int curDepth = maxDepth.get(val);
+                if(curDepth >= maxDepthOnThisLevel){
+                    secondBest = maxDepthOnThisLevel;
+                    maxI = i;
+                    maxDepthOnThisLevel = curDepth;
+                }else if(curDepth > secondBest) {
+                    secondBest = curDepth;
+                }
                 if(cur.left != null){
                     q.offer(cur.left);
                 }
@@ -35,34 +43,43 @@ public class Solution {
                     q.offer(cur.right);
                 }
             }
-            if(level != 0){
-                if(vals.size() > 1){
-                    for(int val : vals){
-                        if(val == levelMaxVal){
-                            ans.put(val, level + nextMax);
-                        }else ans.put(val, level + levelMax);
+            for(int i = 0; i < nodes.size(); i++) {
+                if(valIndex.containsKey(nodes.get(i))) {
+                    int ans;
+                    if(i == maxI) {
+                        ans = secondBest == -1 ? level - 1 : secondBest;
+                    } else {
+                        ans = maxDepthOnThisLevel;
                     }
-                }else {
-                    ans.put(vals.get(0), level - 1);
-                }
+                    for(int x : valIndex.get(nodes.get(i)) ){
+                        res[x] = ans;
+                    }
 
+                }
             }
             level++;
         }
-        int[] result = new int[queries.length];
-        for(int i = 0; i < queries.length; i++){
-            result[i] = ans.get(queries[i]);
-        }
-        return result;
+        return res;
     }
-
-    private int dfs(TreeNode root, Map<Integer, Integer> map){
-        if(root == null){
-            return -1;
+    int dfs(TreeNode root, int level, Map<Integer, Integer> maxDepth ) {
+        if(root.left == null && root.right == null) {
+            maxDepth.put(root.val, level);
+            return level;
         }
-        int h = Math.max(1 + dfs(root.left, map), 1 + dfs(root.right, map));
-        map.put(root.val, Math.max(map.getOrDefault(root.val, 0), h));
 
-        return h;
+        if(root.left != null && root.right != null) {
+            int d =  Math.max(dfs(root.left, level + 1, maxDepth),dfs(root.right, level + 1, maxDepth));
+            maxDepth.put(root.val, d);
+            return d;
+        }else if(root.left != null) {
+            int d =  dfs(root.left, level + 1, maxDepth);
+            maxDepth.put(root.val, d);
+            return d;
+        }else {
+            int d =  dfs(root.right, level + 1, maxDepth);
+            maxDepth.put(root.val, d);
+            return d;
+        }
+
     }
 }
